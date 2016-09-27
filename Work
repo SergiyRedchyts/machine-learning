@@ -1,0 +1,52 @@
+train_data <- read.csv("pml-training.csv", na.strings = c("NA", "#DIV/0!", ""))
+test_data  <- read.csv("pml-testing.csv",  na.strings = c("NA", "#DIV/0!", ""))
+
+```{r}
+NA_number = sapply(1:dim(train_data)[2],function(x)sum(is.na(train_data[,x])))
+NA_index = which(NA_number>0)
+train_data = train_data[,-NA_index]
+train_data = train_data[,-c(1:7)]
+train_data$classe = factor(train_data$classe)
+test_data = test_data[,-NA_list]
+test_data = test_data[,-c(1:7)]
+```
+
+```{r}
+train_index <- createDataPartition(y=train_data$classe, p=0.75,list=F)
+train <- train_data[train_index,] 
+test <- train_data[-train_index,]  
+dim(train)
+dim(test)
+```
+
+```{r}
+set.seed(12345)
+tree.train=tree(classe~.,data=train)
+summary(tree.train)
+```
+
+```{r}
+model1 <- train(classe ~ .,method='rpart',data=train)
+fancyRpartPlot(model1$finalModel)
+```
+
+```{r}
+pred1 <- predict(model1,newdata=test)
+    res_data <- confusionMatrix(pred1,test$classe)
+    res_data$table
+```
+
+```{r}
+res_data$overall[1]
+```
+
+From the confusion matrix it is clear the accuracy of “0.49” for this model fit clearly shows “no purity” hence this model fit is rejected.
+
+```{r}
+model2 <- randomForest(classe~., data=train, method='class')
+    pred2 <- predict(model2,test,type='class') 
+    qplot(roll_belt, magnet_dumbbell_y, colour=classe, data=train)  
+```
+
+
+

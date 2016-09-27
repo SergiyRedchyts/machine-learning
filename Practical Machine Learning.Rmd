@@ -1,0 +1,134 @@
+---
+title: "Coursera Practical Machine Learning Project"
+author: "Sergiy Redchyts"
+output:
+  html_document:
+    keep_md: yes
+  pdf_document: default
+---
+
+**Coursera - Practical Machine Learning:** Peer Assessment Project 
+
+#Executive Summary
+
+The goal of this project is to predict the manner in which people did the exercise. This is the "classe" variable in the training set.
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: [link](http://groupware.les.inf.puc-rio.br/har) (see the section on the Weight Lifting Exercise Dataset).
+
+#Exploratory data analyses
+
+##Loading Libraries & Data
+
+```{r}
+library(caret)
+library(rattle)
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+library(ggplot2)
+```
+
+The training data to be used for this project:
+[link](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv)
+
+The test data to be used for this project:
+[link](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv)
+
+The data to be used for this project:
+[link](http://groupware.les.inf.puc-rio.br/har)
+
+Let's download data from depositories mentioned above and then read data into datasets replacing miscellaneousand empty fields with 'NA':
+
+```{r}
+train_data <- read.csv("pml-training.csv", na.strings = c("NA", "#DIV/0!", ""))
+test_data  <- read.csv("pml-testing.csv",  na.strings = c("NA", "#DIV/0!", ""))
+```
+
+##Top level data analysis
+
+```{r}
+dim(train_data)
+dim(test_data)
+```
+
+We have **19622** training data sets and **20** clean test data to check our prediction machine.
+
+Let's remove all the variables containing NA values and several variables which are not direcly related to the target variable classe in both data sets:
+
+```{r}
+NA_number = sapply(1:dim(train_data)[2],function(x)sum(is.na(train_data[,x])))
+NA_index = which(NA_number>0)
+train_data = train_data[,-NA_index]
+train_data = train_data[,-c(1:7)]
+train_data$classe = factor(train_data$classe)
+test_data = test_data[,-NA_index]
+test_data = test_data[,-c(1:7)]
+```
+
+Let's split the training set into two data sets for cross validation purposes. We randomly subsample 75% of the set for training purposes, while the rest 25% will be used for testing, evaluation and accuracy measurement.
+
+```{r}
+train_index <- createDataPartition(y=train_data$classe, p=0.75,list=F)
+train <- train_data[train_index,] 
+test <- train_data[-train_index,]  
+dim(train)
+dim(test)
+```
+
+##Modelling
+
+Now let's use **Tree method** and generate random forest tree for these data and build the plot for it:
+
+```{r}
+model1 <- train(classe ~ .,method='rpart',data=train)
+fancyRpartPlot(model1$finalModel)
+```
+
+```{r}
+pred1 <- predict(model1,newdata=test)
+    res_data <- confusionMatrix(pred1,test$classe)
+    res_data$table
+```
+
+```{r}
+res_data$overall[1]
+```
+
+From the confusion matrix we can conclude that the accuracy of “0.50” for this model shows “no purity” hence this model is rejected.
+
+So, let's try **Forest Method**. 
+
+```{r}
+model2 <- randomForest(classe~., data=train, method='class')
+    pred2 <- predict(model2,test,type='class') 
+    qplot(roll_belt, magnet_dumbbell_y, colour=classe, data=train)  
+```
+
+This model provides us with 99% accurancy hence we can choose this model to predict the testing data set.
+
+```{r}
+res_data_mod <- confusionMatrix(pred2,test$classe)
+    res_data_mod$table  
+```
+
+```{r}
+res_data_mod$overall[1]
+```
+
+##Conclusions
+
+Based on the results obtained by using the Random Forest method let's consider this approach for testing the test data set to submit the final results:
+
+```{r}
+pred3 <-  predict(model2,test_data,type='class')
+    set_end <- length(pred3)
+    for (i in 1:set_end){
+        filename <- paste0("output_id",i,".txt")
+        write.table(pred3[i], file=filename, quote=FALSE, row.names=FALSE, col.names=FALSE)
+    }
+pred3
+dir()
+```
+
+
+
